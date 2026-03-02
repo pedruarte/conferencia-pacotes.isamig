@@ -6,71 +6,19 @@
 <title>Conferência de Pacotes</title>
 
 <style>
-body{
-  margin:0;
-  font-family:Arial, sans-serif;
-  background:#f3f4f6;
-}
+body{margin:0;font-family:Arial,sans-serif;background:#f3f4f6;}
 .app{display:flex;min-height:100vh}
-.sidebar{
-  width:220px;
-  background:#111827;
-  color:#fff;
-  padding:20px;
-}
+.sidebar{width:220px;background:#111827;color:#fff;padding:20px;}
 .sidebar h2{margin:0 0 20px 0}
-.sidebar button{
-  width:100%;
-  padding:10px;
-  margin-bottom:10px;
-  border:none;
-  cursor:pointer;
-  border-radius:6px;
-}
+.sidebar button{width:100%;padding:10px;margin-bottom:10px;border:none;cursor:pointer;border-radius:6px;}
 .sidebar button:hover{opacity:.9}
-
 .content{flex:1;padding:20px}
-
-.card{
-  background:#fff;
-  padding:15px;
-  border-radius:8px;
-  margin-bottom:15px;
-  box-shadow:0 4px 12px rgba(0,0,0,.08);
-}
-
-input,select,button{
-  padding:10px;
-  width:100%;
-  margin-top:8px;
-  border-radius:6px;
-  border:1px solid #ddd;
-}
-
-button{
-  background:#2563eb;
-  color:#fff;
-  border:none;
-  cursor:pointer;
-}
-
-table{
-  width:100%;
-  border-collapse:collapse;
-  margin-top:10px;
-  background:#fff;
-}
-
-th,td{
-  padding:8px;
-  border-bottom:1px solid #ddd;
-  font-size:14px;
-}
-
-#cameraDevolucao video{
-  width:100%;
-  border-radius:8px;
-}
+.card{background:#fff;padding:15px;border-radius:8px;margin-bottom:15px;box-shadow:0 4px 12px rgba(0,0,0,.08);}
+input,select,button{padding:10px;width:100%;margin-top:8px;border-radius:6px;border:1px solid #ddd;}
+button{background:#2563eb;color:#fff;border:none;cursor:pointer;}
+table{width:100%;border-collapse:collapse;margin-top:10px;background:#fff;}
+th,td{padding:8px;border-bottom:1px solid #ddd;font-size:14px;}
+#cameraDevolucao video{width:100%;border-radius:8px;}
 </style>
 </head>
 <body>
@@ -100,30 +48,13 @@ th,td{
 
 <div id="retorno" style="margin-top:10px;font-weight:bold"></div>
 
-<div style="margin-top:15px">
-Transportadora: <span id="transportadora">0</span><br>
-Correios: <span id="correios">0</span><br>
-Coletados Hoje: <span id="coletados">0</span>
-</div>
-
 </div>
 </div>
 
 <div id="relatorios" style="display:none">
 <div class="card">
 <h3>Relatórios</h3>
-<table>
-<thead>
-<tr>
-<th>Status</th>
-<th>Código</th>
-<th>Tipo</th>
-<th>Pronto</th>
-<th>Coletado</th>
-</tr>
-</thead>
-<tbody id="tabela-relatorios"></tbody>
-</table>
+<p>Relatórios atualizados no backend.</p>
 </div>
 </div>
 
@@ -136,20 +67,8 @@ Coletados Hoje: <span id="coletados">0</span>
 <button onclick="capturar()">Capturar</button>
 
 <div style="margin-top:10px">
-Coletados Hoje: <span id="contadorDevolucao">0</span>
+Fotos enviadas diretamente ao backend.
 </div>
-
-<table>
-<thead>
-<tr>
-<th>Arquivo</th>
-<th>Data</th>
-<th>Hora</th>
-<th>Abrir</th>
-</tr>
-</thead>
-<tbody id="tabelaDevolucao"></tbody>
-</table>
 
 </div>
 </div>
@@ -160,7 +79,6 @@ Coletados Hoje: <span id="contadorDevolucao">0</span>
 <script>
 const API_URL = "https://script.google.com/macros/s/AKfycbzf-iAgJOxfJqKnp_iNeeYovV4dbt56KddjL1oHZbuvbF5hDmaj7KCrUd1VEYq5U1keuw/exec";
 
-let relatorios = [];
 let devolucaoStream = null;
 
 /* ================= SCANNER ================= */
@@ -170,9 +88,9 @@ async function processar(){
   const tipoEnvio = document.getElementById("tipoEnvio").value;
   if(!codigo) return;
 
-  const res = await fetch(API_URL,{
+  await fetch(API_URL,{
     method:"POST",
-    headers: { "Content-Type": "application/json" },
+    mode:"no-cors",
     body:JSON.stringify({
       acao:"receberCodigo",
       codigo,
@@ -180,57 +98,8 @@ async function processar(){
     })
   });
 
-  const resultado = await res.json();
-  document.getElementById("retorno").innerText = resultado;
+  document.getElementById("retorno").innerText = "Enviado ✔";
   document.getElementById("codigo").value="";
-  atualizarContadores();
-}
-
-/* ================= CONTADORES ================= */
-
-async function atualizarContadores(){
-  const res = await fetch(API_URL,{
-    method:"POST",
-    headers: { "Content-Type": "application/json" },
-    body:JSON.stringify({acao:"contadores"})
-  });
-
-  const d = await res.json();
-
-  document.getElementById("transportadora").innerText=d.pronto.transportadora;
-  document.getElementById("correios").innerText=d.pronto.correios;
-  document.getElementById("coletados").innerText=
-  d.coletadoHoje.transportadora + d.coletadoHoje.correios;
-}
-
-/* ================= RELATORIOS ================= */
-
-async function carregarRelatorios(){
-  const res = await fetch(API_URL,{
-    method:"POST",
-    headers: { "Content-Type": "application/json" },
-    body:JSON.stringify({acao:"relatorios"})
-  });
-
-  relatorios = await res.json();
-  renderizarRelatorios();
-}
-
-function renderizarRelatorios(){
-  const tb=document.getElementById("tabela-relatorios");
-  tb.innerHTML="";
-
-  relatorios.forEach(l=>{
-    const tr=document.createElement("tr");
-    tr.innerHTML=`
-      <td>${l.icone}</td>
-      <td>${l.codigo}</td>
-      <td>${l.tipo}</td>
-      <td>${l.pronto}</td>
-      <td>${l.coletado}</td>
-    `;
-    tb.appendChild(tr);
-  });
 }
 
 /* ================= DEVOLUÇÃO ================= */
@@ -265,7 +134,7 @@ async function capturar(){
 
   await fetch(API_URL,{
     method:"POST",
-    headers: { "Content-Type": "application/json" },
+    mode:"no-cors",
     body:JSON.stringify({
       acao:"salvarFoto",
       dataUrl,
@@ -273,33 +142,7 @@ async function capturar(){
     })
   });
 
-  carregarDevolucoes();
-}
-
-async function carregarDevolucoes(){
-  const res=await fetch(API_URL,{
-    method:"POST",
-    headers: { "Content-Type": "application/json" },
-    body:JSON.stringify({acao:"fotos"})
-  });
-
-  const d=await res.json();
-
-  document.getElementById("contadorDevolucao").innerText=d.contadorHoje;
-
-  const tb=document.getElementById("tabelaDevolucao");
-  tb.innerHTML="";
-
-  d.fotos.forEach(f=>{
-    const tr=document.createElement("tr");
-    tr.innerHTML=`
-      <td>${f.nome}</td>
-      <td>${f.data}</td>
-      <td>${f.hora}</td>
-      <td><a href="${f.url}" target="_blank">Abrir</a></td>
-    `;
-    tb.appendChild(tr);
-  });
+  alert("Foto enviada ✔");
 }
 
 function mostrarAba(id){
@@ -307,12 +150,7 @@ function mostrarAba(id){
   document.getElementById("relatorios").style.display="none";
   document.getElementById("devolucao").style.display="none";
   document.getElementById(id).style.display="block";
-
-  if(id==="relatorios") carregarRelatorios();
-  if(id==="devolucao") carregarDevolucoes();
 }
-
-window.onload=()=>atualizarContadores();
 </script>
 
 </body>
