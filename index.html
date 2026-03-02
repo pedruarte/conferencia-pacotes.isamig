@@ -172,6 +172,7 @@ async function processar(){
 
   const res = await fetch(API_URL,{
     method:"POST",
+    headers: { "Content-Type": "application/json" },
     body:JSON.stringify({
       acao:"receberCodigo",
       codigo,
@@ -190,6 +191,7 @@ async function processar(){
 async function atualizarContadores(){
   const res = await fetch(API_URL,{
     method:"POST",
+    headers: { "Content-Type": "application/json" },
     body:JSON.stringify({acao:"contadores"})
   });
 
@@ -206,6 +208,7 @@ async function atualizarContadores(){
 async function carregarRelatorios(){
   const res = await fetch(API_URL,{
     method:"POST",
+    headers: { "Content-Type": "application/json" },
     body:JSON.stringify({acao:"relatorios"})
   });
 
@@ -262,6 +265,7 @@ async function capturar(){
 
   await fetch(API_URL,{
     method:"POST",
+    headers: { "Content-Type": "application/json" },
     body:JSON.stringify({
       acao:"salvarFoto",
       dataUrl,
@@ -275,6 +279,7 @@ async function capturar(){
 async function carregarDevolucoes(){
   const res=await fetch(API_URL,{
     method:"POST",
+    headers: { "Content-Type": "application/json" },
     body:JSON.stringify({acao:"fotos"})
   });
 
@@ -296,8 +301,6 @@ async function carregarDevolucoes(){
     tb.appendChild(tr);
   });
 }
-
-/* ================= UI ================= */
 
 function mostrarAba(id){
   document.getElementById("scanner").style.display="none";
