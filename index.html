@@ -17,8 +17,11 @@ body{margin:0;font-family:Arial,sans-serif;background:#f3f4f6;}
 input,select,button{padding:10px;width:100%;margin-top:8px;border-radius:6px;border:1px solid #ddd;}
 button{background:#2563eb;color:#fff;border:none;cursor:pointer;}
 table{width:100%;border-collapse:collapse;margin-top:10px;background:#fff;}
-th,td{padding:8px;border-bottom:1px solid #ddd;font-size:14px;}
+th,td{padding:8px;border-bottom:1px solid #ddd;font-size:14px;text-align:center;}
 #cameraDevolucao video{width:100%;border-radius:8px;}
+.status-verde{color:green;font-weight:bold;}
+.status-vermelho{color:red;font-weight:bold;}
+.status-amarelo{color:#d97706;font-weight:bold;}
 </style>
 </head>
 <body>
@@ -34,6 +37,7 @@ th,td{padding:8px;border-bottom:1px solid #ddd;font-size:14px;}
 
 <div class="content">
 
+<!-- SCANNER -->
 <div id="scanner">
 <div class="card">
 <h3>Scanner</h3>
@@ -44,20 +48,42 @@ th,td{padding:8px;border-bottom:1px solid #ddd;font-size:14px;}
 </select>
 
 <input id="codigo" placeholder="Bipe o código">
+
 <button onclick="processar()">Processar</button>
 
 <div id="retorno" style="margin-top:10px;font-weight:bold"></div>
 
+<hr>
+
+Transportadora: <span id="transportadora">0</span><br>
+Correios: <span id="correios">0</span><br>
+Coletados Hoje: <span id="coletados">0</span>
+
 </div>
 </div>
 
+<!-- RELATÓRIOS -->
 <div id="relatorios" style="display:none">
 <div class="card">
 <h3>Relatórios</h3>
-<p>Relatórios atualizados no backend.</p>
+
+<table>
+<thead>
+<tr>
+<th>Status</th>
+<th>Código</th>
+<th>Tipo</th>
+<th>Pronto</th>
+<th>Coletado</th>
+</tr>
+</thead>
+<tbody id="tabela-relatorios"></tbody>
+</table>
+
 </div>
 </div>
 
+<!-- DEVOLUÇÃO -->
 <div id="devolucao" style="display:none">
 <div class="card">
 <h3>Devolução Shopee</h3>
@@ -66,9 +92,21 @@ th,td{padding:8px;border-bottom:1px solid #ddd;font-size:14px;}
 <button onclick="abrirCamera()">Abrir Câmera</button>
 <button onclick="capturar()">Capturar</button>
 
-<div style="margin-top:10px">
-Fotos enviadas diretamente ao backend.
-</div>
+<hr>
+
+Coletados Hoje: <span id="contadorDevolucao">0</span>
+
+<table>
+<thead>
+<tr>
+<th>Arquivo</th>
+<th>Data</th>
+<th>Hora</th>
+<th>Abrir</th>
+</tr>
+</thead>
+<tbody id="tabelaDevolucao"></tbody>
+</table>
 
 </div>
 </div>
@@ -77,9 +115,20 @@ Fotos enviadas diretamente ao backend.
 </div>
 
 <script>
-const API_URL = "https://script.google.com/macros/s/AKfycbzf-iAgJOxfJqKnp_iNeeYovV4dbt56KddjL1oHZbuvbF5hDmaj7KCrUd1VEYq5U1keuw/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycby3O0yUTTKR9pJfNH5cGMNfdjqiprc97V-mW7VuKE75UIQAjrlWazzDbY2RsfF7dga1Qw/exec";
 
+let relatorios = [];
 let devolucaoStream = null;
+
+/* ================= API PADRÃO ================= */
+
+async function api(acao, dados = {}) {
+  const response = await fetch(API_URL, {
+    method: "POST",
+    body: JSON.stringify({ acao, ...dados })
+  });
+  return await response.json();
+}
 
 /* ================= SCANNER ================= */
 
@@ -88,18 +137,51 @@ async function processar(){
   const tipoEnvio = document.getElementById("tipoEnvio").value;
   if(!codigo) return;
 
-  await fetch(API_URL,{
-    method:"POST",
-    mode:"no-cors",
-    body:JSON.stringify({
-      acao:"receberCodigo",
-      codigo,
-      tipoEnvio
-    })
-  });
+  const resultado = await api("receberCodigo", { codigo, tipoEnvio });
 
-  document.getElementById("retorno").innerText = "Enviado ✔";
+  document.getElementById("retorno").innerText = resultado;
   document.getElementById("codigo").value="";
+  atualizarContadores();
+}
+
+/* ================= CONTADORES ================= */
+
+async function atualizarContadores(){
+  const d = await api("contadores");
+
+  document.getElementById("transportadora").innerText=d.pronto.transportadora;
+  document.getElementById("correios").innerText=d.pronto.correios;
+  document.getElementById("coletados").innerText=
+    d.coletadoHoje.transportadora + d.coletadoHoje.correios;
+}
+
+/* ================= RELATÓRIOS ================= */
+
+async function carregarRelatorios(){
+  relatorios = await api("relatorios");
+  renderizarRelatorios();
+}
+
+function renderizarRelatorios(){
+  const tb=document.getElementById("tabela-relatorios");
+  tb.innerHTML="";
+
+  relatorios.forEach(l=>{
+    const tr=document.createElement("tr");
+
+    let classe="status-amarelo";
+    if(l.icone==="🟢") classe="status-verde";
+    if(l.icone==="🔴") classe="status-vermelho";
+
+    tr.innerHTML=`
+      <td class="${classe}">${l.icone}</td>
+      <td>${l.codigo}</td>
+      <td>${l.tipo}</td>
+      <td>${l.pronto}</td>
+      <td>${l.coletado}</td>
+    `;
+    tb.appendChild(tr);
+  });
 }
 
 /* ================= DEVOLUÇÃO ================= */
@@ -132,25 +214,43 @@ async function capturar(){
   const dataUrl=canvas.toDataURL("image/png");
   const nomeArquivo="devolucao_"+Date.now()+".png";
 
-  await fetch(API_URL,{
-    method:"POST",
-    mode:"no-cors",
-    body:JSON.stringify({
-      acao:"salvarFoto",
-      dataUrl,
-      nomeArquivo
-    })
-  });
-
-  alert("Foto enviada ✔");
+  await api("salvarFoto",{dataUrl,nomeArquivo});
+  carregarDevolucoes();
 }
+
+async function carregarDevolucoes(){
+  const d=await api("fotos");
+
+  document.getElementById("contadorDevolucao").innerText=d.contadorHoje;
+
+  const tb=document.getElementById("tabelaDevolucao");
+  tb.innerHTML="";
+
+  d.fotos.forEach(f=>{
+    const tr=document.createElement("tr");
+    tr.innerHTML=`
+      <td>${f.nome}</td>
+      <td>${f.data}</td>
+      <td>${f.hora}</td>
+      <td><a href="${f.url}" target="_blank">Abrir</a></td>
+    `;
+    tb.appendChild(tr);
+  });
+}
+
+/* ================= UI ================= */
 
 function mostrarAba(id){
   document.getElementById("scanner").style.display="none";
   document.getElementById("relatorios").style.display="none";
   document.getElementById("devolucao").style.display="none";
   document.getElementById(id).style.display="block";
+
+  if(id==="relatorios") carregarRelatorios();
+  if(id==="devolucao") carregarDevolucoes();
 }
+
+window.onload=()=>atualizarContadores();
 </script>
 
 </body>
